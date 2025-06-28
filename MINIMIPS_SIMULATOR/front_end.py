@@ -4,6 +4,14 @@ from tkinter import filedialog, scrolledtext
 # --- Funções dos botões (sem alterações) ---
 def botao_file():
     print("Botão 'File' clicado")
+    caminho_arquivo = filedialog.askopenfilename(
+        title="Selecione um arquivo",
+        filetypes=(
+            ("Arquivos Binarios", "*.s"),
+            ("Todos os arquivos", "*.*")
+        )
+    )
+    print(str(caminho_arquivo))
 
 def botao_executa():
     print("Botão 'Executar' clicado")
