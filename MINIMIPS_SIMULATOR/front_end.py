@@ -28,15 +28,12 @@ buttonFile = tk.Button(frame_principal, text="File", command=botao_file)
 buttonStart = tk.Button(frame_principal, text="Executar", command=botao_executa)
 buttonReset = tk.Button(frame_principal, text="Resetar", command=botao_reseta)
 
-# Trocamos ttk.Separator por um Frame com cor de fundo e espessura definida
-
-
-
 #posicionamento dos botoes
 buttonFile.grid(row=0, column=0, padx=5, pady=5)
 buttonStart.grid(row=0, column=1, padx=5, pady=5)
 buttonReset.grid(row=0, column=2, padx=5, pady=5)
 
+#criacao do frame das areas
 frame_meio = tk.Frame(root)
 frame_meio.pack()
 
