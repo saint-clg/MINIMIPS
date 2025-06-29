@@ -21,7 +21,7 @@ class MipsSimuladorGUI:
         self.memoria = []
         self.vetor_reg = []
         self.programa = []
-        self.labels = {} # NOVO: Dicionário para guardar etiquetas (labels) e seus endereços.
+        self.labels = {}
         self.PC = 0
         self.file_path = ""
         self.step_by_step = tk.BooleanVar(value=False)
