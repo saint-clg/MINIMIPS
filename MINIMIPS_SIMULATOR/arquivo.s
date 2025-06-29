@@ -10,17 +10,9 @@ addi $v0, $zero, 4
 la   $a0, mensagem_inicial
 syscall
 
-<<<<<<< HEAD
 add $a0, $a0, $t0
 addi $v0, $zero, 1
 syscall
-=======
-# Carrega os valores da memória
-la   $t0, valor_x      # $t0 = endereço de valor_x
-lw   $t1, 0($t0)       # $t1 = memoria[$t0] -> $t1 = 15
-la   $t0, valor_y      # $t0 = endereço de valor_y
-lw   $t2, 0($t0)       # $t2 = memoria[$t0] -> $t2 = 7
->>>>>>> 1dfcfc71ada6e17624f0ea71bb6d76629c0ace93
 
 # Testa operações aritméticas
 add  $t3, $t1, $t2     # $t3 = 15 + 7 = 22
