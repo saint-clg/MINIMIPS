@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog, scrolledtext
+from minimips import vetor_reg, memoria, reg_dic, file_path, Executa
 
 caminho_arquivo = ""
 stepByStep = False
@@ -8,22 +9,26 @@ class MipsInterface:
     # --- Funções dos botões (sem alterações) ---
     def botao_file():
         print("Botão 'File' clicado")
-        caminho_arquivo = filedialog.askopenfilename(
+        file_path = filedialog.askopenfilename(
             title="Selecione um arquivo",
             filetypes=(
                 ("Arquivos Binarios", "*.s"),
                 ("Todos os arquivos", "*.*")
             )
         )
-        print(caminho_arquivo)
+        print(file_path)
 
     def botao_executa():
+        Executa = True
         print("Botão 'Executar' clicado")
 
     def botao_reseta():
         print("Botão 'Resetar' clicado")
         caminho_arquivo = ""
         print(caminho_arquivo)
+        vetor_reg = [0] * 10
+        memoria = [0] * 256 
+
 
     def muda_step():
         global stepByStep
@@ -62,6 +67,15 @@ class MipsInterface:
     area_registradores = scrolledtext.ScrolledText(frame_meio, width=20, height=20)
     area_registradores.pack(side=tk.LEFT, padx=10)
     area_registradores.insert(tk.INSERT, "Registradores:\n")
+    nomes_dos_registradores = ["$zero", "$v0", "$a0", "$t0", "$t1", "$t2", "$t3", "$sp", "$HI", "$LO"]
+    for nome_do_registrador in nomes_dos_registradores:
+    # Usa o nome para pegar o ENDEREÇO do registrador no dicionário
+        endereco = reg_dic[nome_do_registrador]
+    # Usa o ENDEREÇO para pegar o VALOR ATUAL na lista de memória
+        valor_atual = vetor_reg[endereco]
+    # Cria a linha formatada e insira no ScrolledText
+        linha = f"{nome_do_registrador}: {valor_atual}\n"
+        area_registradores.insert(tk.END, linha)
 
     area_bin = scrolledtext.ScrolledText(frame_meio, width=50, height=20)
     area_bin.pack(side=tk.LEFT, padx=10)

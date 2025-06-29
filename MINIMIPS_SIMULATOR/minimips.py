@@ -59,11 +59,11 @@ inst_dic = {
     "syscall": [0, 0, 0, 0, 0]
 } 
 
-# --- VARIÁVEIS DE ESTADO DO SIMULADOR --- 
-file_path = "MINIMIPS_SIMULATOR\\arquivo.s" # Path do arquivo a ser lido
-PC = 0 # Program Counter 
-EPC = 0 # EPC  
-CAUSE = 0 # CAUSE 
+# --- VARIÁVEIS DE ESTADO DO SIMULADOR ---
+file_path = "" # Simplifiquei o path para o exemplo
+PC = 0 # Program Counter
+EPC = 0 # EPC 
+CAUSE = 0 # CAUSE
 
 # FUNÇÕES: 
 
