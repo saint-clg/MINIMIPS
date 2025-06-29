@@ -1,241 +1,377 @@
-#               (VÁRIAVEIS PARA A SIMULAR OS REGISTRADORES E INSTRUÇÕES)
+# Importa as bibliotecas necessárias do Tkinter para a criação da interface gráfica.
+import tkinter as tk
+from tkinter import filedialog, scrolledtext
 
-# O vetor memória simula a pilha, podendo ser carregado em até 256 valores
-memoria = [0] * 256 
+class MipsSimuladorGUI:
+    """
+    Classe principal que encapsula todo o simulador MIPS e sua interface gráfica (GUI).
+    Ela gerencia o estado do processador (registradores, memória), o carregamento do programa,
+    a execução (contínua ou passo a passo) e a exibição de todas as informações na tela.
+    """
+    def __init__(self, root):
+        """
+        Método construtor da classe. É chamado quando um objeto MipsSimuladorGUI é criado.
+        Inicializa o simulador, as variáveis de estado e a interface gráfica.
+        :param root: A janela principal (root) do Tkinter onde a interface será construída.
+        """
+        self.root = root
+        self.root.title("MINI-MIPS Simulador") # Define o título da janela.
 
-# Vetor de registradores
-# Fizemos uma simplificação, diminuindo a quantidade de registradores para apenas 10
-# Aqui será salvo cada valor para os registradores, com excessão de sp
-vetor_reg = [0] * 10 # $zero, $v0, $a0, $t0-$t3, $sp, $HI, $LO
+        # --- VARIÁVEIS DE ESTADO DO SIMULADOR ---
+        # Atributos da instância (self) que guardam o estado atual do simulador.
+        self.memoria = []       # Simula a memória principal do MIPS, como uma lista.
+        self.vetor_reg = []     # Simula o banco de registradores, como uma lista.
+        self.programa = []      # Armazena o programa carregado, como uma lista de instruções.
+        self.PC = 0             # Program Counter (Contador de Programa), aponta para a próxima instrução a ser executada.
+        self.file_path = ""     # Caminho do arquivo .s carregado.
+        self.step_by_step = tk.BooleanVar(value=False) # Variável do Tkinter para controlar o modo de execução (passo a passo ou contínuo).
 
+        # --- DICIONÁRIOS DE TRADUÇÃO E CONTROLE ---
+        # Dicionário que mapeia o nome de cada registrador para seu índice no vetor_reg.
+        self.reg_dic = {
+            "$zero": 0, "$v0": 1, "$a0": 2, "$t0": 3, "$t1": 4,
+            "$t2": 5, "$t3": 6, "$sp": 7, "$HI": 8, "$LO": 9
+        }
+        # Dicionário que mapeia o nome da instrução para seu código de operação (opcode) em binário.
+        self.opcode_dic = {
+            # Tipo-R (opcode é sempre "000000")
+            "add": "000000", "sub": "000000", "mult": "000000", "and": "000000",
+            "or": "000000", "sll": "000000", "slt": "000000", "syscall": "000000",
+            # Tipo-I
+            "addi": "001000", "lw": "100011", "sw": "101011", "lui": "001111",
+            "slti": "001010"
+        }
+        # Dicionário que mapeia o nome da instrução do Tipo-R ao seu código de função (funct) em binário.
+        self.funct_dic = {
+            "add": "100000", "sub": "100010", "mult": "011000", "and": "100100",
+            "or": "100101", "sll": "000000", "slt": "101010", "syscall": "001100"
+        }
 
-# O vetor de índice 7 representa o $sp
-# Neste vetor ele irá salvar uma "posição" na memória, para simular a pilha
-# Nada mais é que um índice que indica uma posição no vetor memória
-# Começa apontando para o último índice e precisa ser "subtraido" para abrir espaço na pilha
-vetor_reg[7] = len(memoria) - 1 # "Len(memoria)" retorna o tamanho do vetor memória em python
+        # --- INICIALIZAÇÃO DA GUI E DO SIMULADOR ---
+        self._criar_widgets()       # Chama o método para criar os elementos visuais da interface.
+        self.resetar_simulador()  # Chama o método para inicializar/resetar o estado do simulador.
 
-# Um dicionário para ler os registradores que o .s nos enviar
-# Cada instrução retorna um número que a posição do registrador no vetor de registradores
-# Basicamente simulando um endereço para a memória onde fica armazenado seu valor
-reg_dic = {
-    "$zero": 0,
-    "$v0": 1,
-    "$a0": 2,
-    "$t0": 3,
-    "$t1": 4,
-    "$t2": 5,
-    "$t3": 6,
-    "$sp": 7,
-    "$HI": 8, # Usado em mult quando ultrapassar os 32bits para armazenar seus 16 bist mais sign
-    "$LO": 9  # Usado em mult quando ultrapassar os 32bits para armazenar seus 16 bits menos sign
-}
+    def _criar_widgets(self):
+        """
+        Cria e posiciona todos os widgets (botões, caixas de texto, etc.) da interface gráfica.
+        Este método é chamado apenas uma vez, no construtor.
+        """
+        # --- ESTRUTURA DA JANELA (FRAMES) ---
+        # O Frame principal contém todos os outros elementos.
+        frame_principal = tk.Frame(self.root, relief="ridge", borderwidth=2)
+        frame_principal.pack(fill="both", expand=True, padx=10, pady=10)
+        frame_principal.rowconfigure(1, weight=1)    # Permite que a linha 1 (com as áreas de texto) se expanda verticalmente.
+        frame_principal.columnconfigure(0, weight=1) # Permite que a coluna 0 se expanda horizontalmente.
 
-# LEMBRAR: Não esquecer de pesquisar como funcionam os regs $HI e $LO
+        # Frame para os botões de controle.
+        frame_botoes = tk.Frame(frame_principal)
+        frame_botoes.grid(row=0, column=0, columnspan=3, sticky="nw", pady=5) # Posiciona na parte superior.
 
-# DICIONÁRIO DE CONTROLE ---- (prestar atenção para não esquecer)
+        # --- BOTÕES ---
+        buttonFile = tk.Button(frame_botoes, text="Selecionar Arquivo (.s)", command=self.selecionar_arquivo)
+        buttonStart = tk.Button(frame_botoes, text="Executar/Próximo Passo", command=self.executar_programa)
+        buttonReset = tk.Button(frame_botoes, text="Resetar", command=self.resetar_simulador)
+        checkButton = tk.Checkbutton(frame_botoes, text="Executar Passo a Passo", variable=self.step_by_step)
 
-# Control: [RegDst, ALUSrc, MemToReg, RegWrite, MemRead, MemWrite]
-# ALUSrc: 0=Reg, 1=Imediato
-# MemToReg: 0=ALUResult, 1=MemData
-# RegWrite: 1=Escreve no registrador
-# MemRead/Write: 1=Lê/Escreve na memória
+        # Adiciona os botões ao frame de botões, um ao lado do outro.
+        buttonFile.pack(side=tk.LEFT, padx=5)
+        buttonStart.pack(side=tk.LEFT, padx=5)
+        buttonReset.pack(side=tk.LEFT, padx=5)
+        checkButton.pack(side=tk.LEFT, padx=5)
 
-inst_dic = {
-    #               [ALUSrc, MemToReg, RegWrite, MemRead, MemWrite]
-    "add":   [0, 0, 1, 0, 0],
-    "addi":  [1, 0, 1, 0, 0],
-    "sub":   [0, 0, 1, 0, 0],
-    "mult":  [0, 0, 1, 0, 0],
-    "and":   [0, 0, 1, 0, 0],
-    "or":    [0, 0, 1, 0, 0],
-    "sll":   [1, 0, 1, 0, 0], 
-    "lw":    [1, 1, 1, 1, 0], 
-    "sw":    [1, 0, 0, 0, 1],
-    "lui":   [1, 0, 1, 0, 0],
-    "slt":   [0, 0, 1, 0, 0],
-    "slti":  [1, 0, 1, 0, 0], 
-    "syscall": [0, 0, 0, 0, 0] 
-}
+        # --- ÁREAS DE TEXTO ---
+        # Frame que agrupa as três áreas de texto.
+        frame_meio = tk.Frame(frame_principal)
+        frame_meio.grid(row=1, column=0, sticky="nsew") # Posiciona abaixo dos botões.
+        frame_meio.rowconfigure(0, weight=1) # Permite expansão vertical.
+        frame_meio.columnconfigure(2, weight=1) # A terceira coluna (Saídas) tem prioridade para expandir horizontalmente.
 
-# --- VARIÁVEIS DE ESTADO DO SIMULADOR ---
-file_path = "" # Simplifiquei o path para o exemplo
-PC = 0 # Program Counter
-EPC = 0 # EPC 
-CAUSE = 0 # CAUSE
-
-# --- FUNÇÕES DO SIMULADOR ---
-
-def matriz_program(file_path):
-    """Lê um arquivo .s e o transforma em uma matriz de instruções."""
-    matriz = []
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            linhas = f.read().splitlines()
-    except FileNotFoundError:
-        print(f"Erro: Arquivo '{file_path}' não encontrado.")
-        return None
-
-    linhas = [linha for linha in linhas if linha.strip() != '' and not linha.strip().startswith('#')]
-
-    for linha in linhas:
-        partes = linha.replace(',', ' ').replace('(', ' ').replace(')', ' ').split()
-        #A linha de cima trata as linhas da matriz
-        # - Tira as vírgulas
-        # - Transforma 4($sp) em "4" "$sp", lembrar disso
-        matriz.append(partes)
-    return matriz
-
-def decode_execute(instrucao, PC):
-    """Decodifica e executa uma instrução. Retorna o novo PC."""
-    global vetor_reg, memoria, programa # Permite modificar todas as variáveis de estado
-
-    opcode = instrucao[0]
-    if opcode not in inst_dic:
-        print(f"Erro na linha {PC+1}: Instrução '{opcode}' desconhecida.")
-        return PC + 1
-
-    # --- Instruções do Tipo-R (operam entre registradores) ---
-    if opcode in ["add", "sub", "and", "or", "slt"]:
-        reg_dst_nome = instrucao[1]
-        reg_src1_nome = instrucao[2]
-        reg_src2_nome = instrucao[3]
+        # Área de Texto para Registradores (com barra de rolagem).
+        self.area_registradores = scrolledtext.ScrolledText(frame_meio, width=25, height=20, font=("Courier New", 10))
+        self.area_registradores.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
         
-        idx_dst = reg_dic[reg_dst_nome]
-        val_src1 = vetor_reg[reg_dic[reg_src1_nome]]
-        val_src2 = vetor_reg[reg_dic[reg_src2_nome]]
+        # Área de Texto para Código Binário (com barra de rolagem).
+        self.area_bin = scrolledtext.ScrolledText(frame_meio, width=55, height=20, font=("Courier New", 10))
+        self.area_bin.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+
+        # Área de Texto para Saídas do Sistema (com barra de rolagem).
+        self.area_saidas = scrolledtext.ScrolledText(frame_meio, width=50, height=20, font=("Courier New", 10))
+        self.area_saidas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
+
+    def _to_binary(self, n, bits):
+        """
+        Função utilitária para converter um número inteiro para sua representação em string binária.
+        :param n: O número a ser convertido.
+        :param bits: O número de bits que a string binária deve ter (preenche com zeros à esquerda).
+        :return: A string binária formatada.
+        """
+        if n >= 0:
+            return format(n, 'b').zfill(bits)
+        else: # Lida com a representação em complemento de dois para números negativos.
+            return format((1 << bits) + n, 'b')
+
+    def traduzir_instrucao_para_binario(self, instrucao):
+        """
+        Recebe uma instrução (como uma lista de strings) e a traduz para o formato binário MIPS.
+        :param instrucao: A instrução parseada, ex: ['add', '$t0', '$t1', '$t2'].
+        :return: Uma string representando a instrução em binário.
+        """
+        if not instrucao: return "" # Retorna vazio se a instrução for inválida.
+        opcode_str = instrucao[0]
+        try:
+            # A lógica de tradução é separada pelo tipo da instrução (R ou I).
+            if opcode_str in ["add", "sub", "and", "or", "slt"]: # Tipo R padrão
+                opcode = self.opcode_dic[opcode_str]
+                rd = self._to_binary(self.reg_dic[instrucao[1]], 5)
+                rs = self._to_binary(self.reg_dic[instrucao[2]], 5)
+                rt = self._to_binary(self.reg_dic[instrucao[3]], 5)
+                return f"{opcode} {rs} {rt} {rd} 00000 {self.funct_dic[opcode_str]} (Tipo R)"
+            elif opcode_str == "mult": # Tipo R especial (sem rd)
+                opcode = self.opcode_dic[opcode_str]
+                rs = self._to_binary(self.reg_dic[instrucao[1]], 5)
+                rt = self._to_binary(self.reg_dic[instrucao[2]], 5)
+                return f"{opcode} {rs} {rt} 00000 00000 {self.funct_dic[opcode_str]} (Tipo R)"
+            elif opcode_str == "sll": # Tipo R especial (com shamt)
+                opcode = self.opcode_dic[opcode_str]
+                rd = self._to_binary(self.reg_dic[instrucao[1]], 5)
+                rt = self._to_binary(self.reg_dic[instrucao[2]], 5)
+                shamt = self._to_binary(int(instrucao[3]), 5)
+                return f"{opcode} 00000 {rt} {rd} {shamt} {self.funct_dic[opcode_str]} (Tipo R)"
+            elif opcode_str in ["addi", "slti"]: # Tipo I padrão
+                opcode = self.opcode_dic[opcode_str]
+                rt = self._to_binary(self.reg_dic[instrucao[1]], 5)
+                rs = self._to_binary(self.reg_dic[instrucao[2]], 5)
+                imediato = self._to_binary(int(instrucao[3]), 16)
+                return f"{opcode} {rs} {rt} {imediato} (Tipo I)"
+            elif opcode_str in ["lw", "sw"]: # Tipo I de memória
+                opcode = self.opcode_dic[opcode_str]
+                rt = self._to_binary(self.reg_dic[instrucao[1]], 5)
+                imediato = self._to_binary(int(instrucao[2]), 16)
+                rs = self._to_binary(self.reg_dic[instrucao[3]], 5)
+                return f"{opcode} {rs} {rt} {imediato} (Tipo I)"
+            elif opcode_str == "lui": # Tipo I especial
+                opcode = self.opcode_dic[opcode_str]
+                rt = self._to_binary(self.reg_dic[instrucao[1]], 5)
+                imediato = self._to_binary(int(instrucao[2]), 16)
+                return f"{opcode} 00000 {rt} {imediato} (Tipo I)"
+            elif opcode_str == "syscall": # Instrução de chamada de sistema
+                return f"{self.opcode_dic[opcode_str]} {'0'*20} {self.funct_dic[opcode_str]} (Syscall)"
+            else:
+                return "Tradução não implementada."
+        except (KeyError, IndexError, ValueError) as e:
+            # Captura erros comuns de tradução (ex: registrador inválido, operando faltando).
+            return f"Erro na tradução: {e}"
+
+    def matriz_program(self, file_path):
+        """
+        Lê um arquivo de código assembly MIPS (.s) e o converte em uma lista de instruções.
+        Cada instrução é, por sua vez, uma lista de seus componentes (opcode, operandos).
+        :param file_path: O caminho para o arquivo .s.
+        :return: Uma lista de listas representando o programa, ou None se o arquivo não for encontrado.
+        """
+        matriz = []
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                linhas = f.read().splitlines()
+            # Filtra linhas vazias e linhas que são apenas comentários.
+            linhas = [l for l in linhas if l.strip() and not l.strip().startswith('#')]
+            for linha in linhas:
+                # Normaliza a instrução: remove vírgulas e parênteses e divide em partes.
+                # Ex: "addi $t0, $t1, 10" -> ['addi', '$t0', '$t1', '10']
+                # Ex: "lw $t0, 4($sp)" -> ['lw', '$t0', '4', '$sp']
+                partes = linha.replace(',', ' ').replace('(', ' ').replace(')', ' ').split()
+                matriz.append(partes)
+            return matriz
+        except FileNotFoundError:
+            self.log_saida(f"Erro: Arquivo '{file_path}' não encontrado.")
+            return None
+
+    def decode_execute(self, instrucao):
+        """
+        Decodifica e executa uma única instrução MIPS. Este é o coração do ciclo do processador.
+        Atualiza o estado do simulador (registradores, memória, PC) de acordo com a instrução.
+        :param instrucao: A instrução a ser executada.
+        """
+        opcode = instrucao[0]
         
-        resultado = 0
-        if opcode == "add":
-            resultado = val_src1 + val_src2
-        elif opcode == "sub":
-            resultado = val_src1 - val_src2
-        elif opcode == "and":
-            resultado = val_src1 & val_src2 # CORRIGIDO: Bitwise AND
-        elif opcode == "or":
-            resultado = val_src1 | val_src2 # CORRIGIDO: Bitwise OR
-        elif opcode == "slt":
-            resultado = 1 if val_src1 < val_src2 else 0
-
-        # Write-Back para instruções R-Type padrão
-        if idx_dst != 0:
-            vetor_reg[idx_dst] = resultado
-
-    # --- Instruções de Multiplicação e Divisão (caso especial) ---
-    elif opcode in ["mult", "div"]:
-        # Sintaxe: mult $rs, $rt. Não usam $rd.
-        reg_src1_nome = instrucao[1]
-        reg_src2_nome = instrucao[2]
-        val_src1 = vetor_reg[reg_dic[reg_src1_nome]]
-        val_src2 = vetor_reg[reg_dic[reg_src2_nome]]
-
-        if opcode == "mult":
-            # CORRIGIDO: mult armazena o resultado de 64 bits em $HI e $LO
-            resultado_64bits = val_src1 * val_src2
-            vetor_reg[reg_dic["$LO"]] = resultado_64bits & 0xFFFFFFFF # Pega os 32 bits de baixo
-            vetor_reg[reg_dic["$HI"]] = resultado_64bits >> 32      # Pega os 32 bits de cima
-
-    # --- Instruções de Shift (caso especial de formato) ---
-    elif opcode == "sll":
-        # Sintaxe: sll $rd, $rt, shamt
-        reg_dst_nome = instrucao[1]
-        reg_src_nome = instrucao[2] # Este é o $rt
-        shamt = int(instrucao[3])   # Este é o shift amount
-
-        idx_dst = reg_dic[reg_dst_nome]
-        val_src = vetor_reg[reg_dic[reg_src_nome]]
-        
-        # CORRIGIDO: Usa o operador de bitwise shift-left
-        resultado = val_src << shamt
-        
-        if idx_dst != 0:
-            vetor_reg[idx_dst] = resultado
-
-    # --- Instruções do Tipo-I (operam com um valor imediato) ---
-    elif opcode in ["addi", "slti", "lui"]:
-        reg_dst_nome = instrucao[1]
-        idx_dst = reg_dic[reg_dst_nome]
-
-        if opcode == "lui":
-            # Sintaxe: lui $rt, imediato
-            imediato = int(instrucao[2]) # LUI só tem 2 operandos
-            # CORRIGIDO: Carrega o imediato nos 16 bits de CIMA
-            resultado = imediato << 16
-        else: # addi, slti
-            reg_src_nome = instrucao[2]
-            imediato = int(instrucao[3])
-            val_src = vetor_reg[reg_dic[reg_src_nome]]
+        try:
+            # --- Instruções do Tipo-R (operam entre registradores) ---
+            if opcode in ["add", "sub", "and", "or", "slt"]:
+                idx_dst = self.reg_dic[instrucao[1]]
+                val_src1 = self.vetor_reg[self.reg_dic[instrucao[2]]]
+                val_src2 = self.vetor_reg[self.reg_dic[instrucao[3]]]
+                # Um mapa para simplificar a seleção da operação.
+                res_map = {
+                    "add": val_src1 + val_src2, "sub": val_src1 - val_src2, 
+                    "and": val_src1 & val_src2, "or": val_src1 | val_src2,
+                    "slt": 1 if val_src1 < val_src2 else 0
+                }
+                # Escreve o resultado no registrador de destino, a menos que seja $zero.
+                if idx_dst != 0: self.vetor_reg[idx_dst] = res_map[opcode]
             
-            if opcode == "addi":
-                resultado = val_src + imediato
-            elif opcode == "slti":
-                resultado = 1 if val_src < imediato else 0
+            # --- Multiplicação ---
+            elif opcode == "mult":
+                val_src1 = self.vetor_reg[self.reg_dic[instrucao[1]]]
+                val_src2 = self.vetor_reg[self.reg_dic[instrucao[2]]]
+                res64 = val_src1 * val_src2 # A multiplicação pode gerar um resultado de 64 bits.
+                # Armazena os 32 bits menos significativos em $LO.
+                self.vetor_reg[self.reg_dic["$LO"]] = res64 & 0xFFFFFFFF 
+                # Armazena os 32 bits mais significativos em $HI.
+                self.vetor_reg[self.reg_dic["$HI"]] = res64 >> 32      
 
-        # Write-Back para instruções I-Type
-        if idx_dst != 0:
-            vetor_reg[idx_dst] = resultado
-
-    # --- Instruções de Memória (Load/Store) ---
-    elif opcode in ["lw", "sw"]:
-        reg_src_name = instrucao[1]
-        offset = int(instrucao[2])
-        reg_base_nome = instrucao[3]
-
-        endereco_memoria = offset + vetor_reg[reg_dic[reg_base_nome]]
-
-        if not (0 <= endereco_memoria < len(memoria)):
-            print(f"ERRO: Acesso a endereço de memória inválido ({endereco_memoria}) na linha {PC + 1}")
-        else:
-            if opcode == "lw":
-                # Carrega DA memória PARA o registrador
-                vetor_reg[reg_dic[reg_src_name]] = memoria[endereco_memoria]
-            elif opcode == "sw":
-                # Armazena DE um registrador PARA a memória
-                if reg_src_name in reg_dic:
-                    memoria[endereco_memoria] = vetor_reg[reg_dic[reg_src_name]]
+            # --- Shift Lógico para a Esquerda ---
+            elif opcode == "sll":
+                idx_dst = self.reg_dic[instrucao[1]]
+                val_src = self.vetor_reg[self.reg_dic[instrucao[2]]]
+                shamt = int(instrucao[3]) # Quantidade de deslocamento.
+                if idx_dst != 0: self.vetor_reg[idx_dst] = val_src << shamt
+            
+            # --- Instruções do Tipo-I (operam com um valor imediato) ---
+            elif opcode in ["addi", "slti", "lui"]:
+                idx_dst = self.reg_dic[instrucao[1]]
+                if opcode == "lui": # Load Upper Immediate
+                    imediato = int(instrucao[2])
+                    res = imediato << 16 # Carrega o imediato nos 16 bits superiores do registrador.
+                else: # addi, slti
+                    val_src = self.vetor_reg[self.reg_dic[instrucao[2]]]
+                    imediato = int(instrucao[3])
+                    res = (val_src + imediato) if opcode == "addi" else (1 if val_src < imediato else 0)
+                if idx_dst != 0: self.vetor_reg[idx_dst] = res
+            
+            # --- Instruções de Acesso à Memória (Load/Store) ---
+            elif opcode in ["lw", "sw"]:
+                reg_rt_name = instrucao[1]
+                offset = int(instrucao[2])
+                reg_base_nome = instrucao[3]
+                # Calcula o endereço efetivo na memória: base + deslocamento.
+                endereco = offset + self.vetor_reg[self.reg_dic[reg_base_nome]]
+                
+                # Verifica se o endereço é válido.
+                if not (0 <= endereco < len(self.memoria)):
+                    self.log_saida(f"ERRO: Acesso a endereço de memória inválido ({endereco})")
+                    self.PC = len(self.programa) # Para a execução em caso de erro.
+                    return
+                
+                if opcode == "lw": # Load Word: carrega da memória para o registrador.
+                    self.vetor_reg[self.reg_dic[reg_rt_name]] = self.memoria[endereco]
+                elif opcode == "sw": # Store Word: armazena do registrador para a memória.
+                    self.memoria[endereco] = self.vetor_reg[self.reg_dic[reg_rt_name]]
+            
+            # --- Chamadas de Sistema ---
+            elif opcode == "syscall":
+                call_code = self.vetor_reg[self.reg_dic["$v0"]] # O código do serviço está em $v0.
+                if call_code == 1: # Código 1: Imprimir Inteiro.
+                    # O argumento (inteiro a ser impresso) está em $a0.
+                    self.log_saida(f"Saída do Sistema (syscall 1): {self.vetor_reg[self.reg_dic['$a0']]}")
+                elif call_code == 10: # Código 10: Terminar o programa.
+                    self.log_saida("--- Syscall: Fim da Execução ---")
+                    self.PC = len(self.programa) # Move o PC para o fim para parar o loop de execução.
+                    return
                 else:
-                    imediato = int(reg_src_name)
-                    memoria[endereco_memoria] = imediato
-    # --- Chamadas de Sistema ---
-    elif opcode == "syscall":
-        call_code = vetor_reg[reg_dic["$v0"]]
+                    self.log_saida(f"ERRO: Syscall com código desconhecido ({call_code}).")
+
+            # --- Manutenção e Avanço do PC ---
+            self.vetor_reg[0] = 0 # Garante que o registrador $zero seja sempre 0.
+            self.PC += 1 # Incrementa o PC para a próxima instrução (não lida com saltos/desvios).
+
+        except (KeyError, IndexError, ValueError) as e:
+            # Captura erros de execução (ex: registrador não existe, operando inválido).
+            self.log_saida(f"ERRO DE EXECUÇÃO na linha {self.PC}: {' '.join(instrucao)}")
+            self.log_saida(f"  > Detalhe: {e}. Verifique os operandos e a sintaxe.")
+            self.PC = len(self.programa) # Para a execução.
+
+    # --- FUNÇÕES DE CONTROLE DA GUI (Callbacks dos botões) ---
+
+    def selecionar_arquivo(self):
+        """Abre uma caixa de diálogo para o usuário selecionar um arquivo .s e o carrega."""
+        path = filedialog.askopenfilename(
+            title="Selecione um arquivo .s",
+            filetypes=(("Arquivos MIPS", "*.s"), ("Todos os arquivos", "*.*"))
+        )
+        if path: # Se o usuário selecionou um arquivo.
+            self.file_path = path
+            self.resetar_simulador() # Reseta o estado antes de carregar o novo programa.
+            self.programa = self.matriz_program(self.file_path)
+            if self.programa:
+                self.log_saida(f"Arquivo '{self.file_path.split('/')[-1]}' carregado com {len(self.programa)} instruções.")
+            self.atualizar_displays() # Atualiza a GUI para mostrar o programa carregado.
+
+    def executar_programa(self):
+        """
+        Inicia a execução do programa carregado.
+        Executa uma instrução (passo a passo) ou todas (contínuo).
+        """
+        if not self.programa:
+            self.log_saida("Nenhum programa carregado. Selecione um arquivo primeiro.")
+            return
+
+        if self.PC >= len(self.programa):
+            self.log_saida("O programa já terminou. Pressione 'Resetar' para executar novamente.")
+            return
+
+        if self.step_by_step.get(): # Se o modo "passo a passo" está ativo.
+            instrucao_atual = self.programa[self.PC]
+            self.log_saida(f"PC={self.PC}: Executando -> {' '.join(instrucao_atual)}")
+            self.decode_execute(instrucao_atual) # Executa apenas uma instrução.
+        else: # Execução contínua.
+            self.log_saida("--- INÍCIO DA EXECUÇÃO CONTÍNUA ---")
+            while self.PC < len(self.programa): # Loop até o PC chegar ao fim do programa.
+                instrucao_atual = self.programa[self.PC]
+                self.decode_execute(instrucao_atual)
+            self.log_saida("--- FIM DA EXECUÇÃO ---")
         
-        if call_code == 1: # Imprimir Inteiro (Padrão MIPS)
-            print(f"Saída do Sistema: {vetor_reg[reg_dic['$a0']]}")
-        elif call_code == 4: # Imprimir String (Não exigido, mas exemplo)
-            # A ser implementado: ler da memória a partir do endereço em $a0
-            print("Syscall 4 (imprimir string) não implementado.")
-        elif call_code == 10: # Sair (Padrão MIPS)
-            print("--- Syscall: Fim da Execução ---")
-            return len(programa) # Pula o PC para o final para parar o loop
-        else:
-            print(f"ERRO: Syscall com código desconhecido ({call_code}) na linha {PC + 1}.")
+        self.atualizar_displays() # Atualiza a GUI após a execução.
 
-    # --- Manutenção do Processador ---
-    vetor_reg[0] = 0 # Garante que $zero seja sempre 0
-    
-    # Atualiza o PC para a próxima instrução (não se aplica a saltos e desvios)
-    return PC + 1
-
-
-# --- CICLO PRINCIPAL DE EXECUÇÃO ---
-
-programa = matriz_program(file_path)
-
-if programa:
-    print("--- INÍCIO DA SIMULAÇÃO ---")
-    print(f"Estado inicial dos registradores: {vetor_reg}\n")
-    
-    # Loop de execução
-    while PC < len(programa):
-        instrucao_atual = programa[PC]
-        print(f"PC={PC}: Executando -> {' '.join(instrucao_atual)}")
+    def resetar_simulador(self):
+        """Reseta o estado do simulador para os valores iniciais."""
+        self.memoria = [0] * 256
+        self.vetor_reg = [0] * 10
+        # O ponteiro da pilha ($sp) começa no final da memória.
+        self.vetor_reg[self.reg_dic["$sp"]] = len(self.memoria) - 1
+        self.PC = 0
+        self.programa = [] # Limpa o programa carregado.
         
-        PC = decode_execute(instrucao_atual, PC)
-        
-        # Imprime o estado após a instrução (para depuração)
-        print(f"  Registradores: $v0={vetor_reg[reg_dic['$v0']]} $a0={vetor_reg[reg_dic['$a0']]} $t0={vetor_reg[reg_dic['$t0']]} $t1={vetor_reg[reg_dic['$t1']]}")
-        print("-" * 20)
+        # Limpa as áreas de texto se elas já foram criadas.
+        if hasattr(self, 'area_saidas'):
+             self.log_saida("Simulador resetado. Carregue um novo arquivo.", clear=True)
+             self.atualizar_displays()
 
-    print("--- FIM DA SIMULAÇÃO ---")
-    print(f"Estado final dos registradores: {vetor_reg}")
+    def log_saida(self, mensagem, clear=False):
+        """
+        Adiciona uma mensagem à área de saídas na GUI.
+        :param mensagem: A string a ser exibida.
+        :param clear: Se True, limpa a área de texto antes de adicionar a mensagem.
+        """
+        if clear:
+            self.area_saidas.delete('1.0', tk.END)
+        self.area_saidas.insert(tk.END, mensagem + "\n")
+        self.area_saidas.see(tk.END) # Faz a barra de rolagem descer automaticamente.
+
+    def atualizar_displays(self):
+        """Atualiza todas as áreas de texto com o estado atual do simulador."""
+        # --- Atualiza Área de Registradores ---
+        self.area_registradores.delete('1.0', tk.END)
+        self.area_registradores.insert(tk.INSERT, "--- REGISTRADORES ---\n")
+        for nome, endereco in self.reg_dic.items():
+            valor = self.vetor_reg[endereco]
+            # Formata a linha para alinhar os valores e mostrar em decimal e hexadecimal.
+            linha = f"{nome:<5}: {valor:<10} (0x{valor:08X})\n"
+            self.area_registradores.insert(tk.END, linha)
+
+        # --- Atualiza Área de Código Fonte e Binário ---
+        self.area_bin.delete('1.0', tk.END)
+        self.area_bin.insert(tk.INSERT, "--- CÓDIGO FONTE E BINÁRIO ---\n")
+        for i, instrucao in enumerate(self.programa):
+            # Adiciona ">>" para indicar a próxima instrução a ser executada (apontada pelo PC).
+            prefixo = ">>" if i == self.PC else "  "
+            texto_instrucao = ' '.join(instrucao)
+            binario_str = self.traduzir_instrucao_para_binario(instrucao)
+            linha = f"{prefixo} {i:<3} {texto_instrucao:<20} | {binario_str}\n"
+            self.area_bin.insert(tk.END, linha)
+
+# --- Ponto de Entrada Principal da Aplicação ---
+# Este bloco só é executado quando o script é rodado diretamente (não quando é importado).
+if __name__ == "__main__":
+    root_window = tk.Tk()           # Cria a janela principal.
+    app = MipsSimuladorGUI(root_window) # Cria uma instância da nossa classe de simulador.
+    root_window.mainloop()          # Inicia o loop de eventos do Tkinter, que mantém a janela aberta e responsiva.
