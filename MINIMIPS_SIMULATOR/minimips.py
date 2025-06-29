@@ -14,7 +14,7 @@ class MipsSimulatorGUI:
         self.master = master
         self.master.title("Simulador MIPS")
         # Define um tamanho inicial para a janela
-        self.master.geometry("1200x600")
+        self.master.geometry("1600x900")
 
         #               (VÁRIAVEIS PARA A SIMULAR OS REGISTRADORES E INSTRUÇÕES) 
 
@@ -318,14 +318,14 @@ class MipsSimulatorGUI:
         elif opcode == "syscall":
             call_code = self.vetor_reg[self.reg_dic["$v0"]]
             if call_code == 1:
-                self.log_saida(f"Saída do Sistema: {self.vetor_reg[self.reg_dic['$a0']]}")
+                self.log_saida(f"{self.vetor_reg[self.reg_dic['$a0']]}")
             elif call_code == 4:
                 starting = self.vetor_reg[self.reg_dic["$a0"]]
                 string = ""
                 while 0 <= starting < len(self.memoria) and self.memoria[starting] != 0:
                     string += chr(self.memoria[starting])
                     starting += 1
-                self.log_saida(f"Saída do Sistema: {string}")
+                self.log_saida(f"{string}")
             elif call_code == 10:
                 self.log_saida("--- Syscall: Fim da Execução ---")
                 self.PC = len(self.programa) # Pula o PC para o final para parar o loop
