@@ -59,7 +59,7 @@ inst_dic = {
 }
 
 # --- VARIÁVEIS DE ESTADO DO SIMULADOR ---
-file_path = "MINIMIPS_SIMULATOR\\arquivo.s" # Simplifiquei o path para o exemplo
+file_path = "" # Simplifiquei o path para o exemplo
 PC = 0 # Program Counter
 EPC = 0 # EPC 
 CAUSE = 0 # CAUSE
