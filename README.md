@@ -1,7 +1,9 @@
 **Simulador MIPS com Interface Gráfica**
     Este projeto é um simulador para um subconjunto da arquitetura MIPS, desenvolvido em Python com uma interface
 gráfica (GUI) utilizando a biblioteca Tkinter. A ferramenta foi criada para fins educacionais, permitindo visualizar a execução de código Assembly MIPS passo a passo, inspecionar o estado dos registradores, da memória e entender como as instruções são traduzidas para o formato binário.
+
 ![alt text](image.png)
+
 **Funcionalidades Principais**
 **Interface Gráfica Intuitiva**: Interaja com o simulador através de uma GUI simples para carregar arquivos, executar e resetar a simulação.
 
@@ -54,6 +56,14 @@ O simulador suporta as seguintes chamadas de sistema (definidas em $v0):
 
 **Arquitetura Simulada**
 O simulador utiliza uma arquitetura reduzida, com um número menor de registradores e uma "simulação" da memória de dados:
+
+**Funcionamento no código**: 
+    
+    **Leitura do arquivo**: O código lê linha a linha separando o arquivo em tópicos que são tratados de maneira diferente, o tópico `.data` e `.text`, onde eles guardam endereços na memória de dados simulada e a outra tratada as linhas para transformar o código em uma <<matriz_programa>> que será usada para dividir as linhas do programa em instruções, registradores e valores.
+
+    **Decodificação e execução**: O código recebe uma linha da <<matriz_programa>> que é representada pela váriavel `PC` que simula o endereço da instrução que será executada. O código identifica a instrução apartir de um dícionario de instruções e roda o tratamento da instrução separando os registradores nescessários e executando a operação que se pede. Ao fim da execução da instrução identificada a função retorna o "endereço da próxima instrução", que nessa simulação é o índice da próxima linha da nossa <<matriz_programa>>, `PC + 1`
+
+    **Tradução Para Bin**: Existe uma função no código que recebe a instrução e segue uma série de dicionários para traduzir as instruções, registradores e valores imediatos
 
 **Memória**: Um vetor de 256 bytes para dados e pilha.
 
