@@ -1,3 +1,6 @@
+"""Simulador de compilador MIPS 32"""
+"""by: @João Francisco Barcala Paulo, @Lorenzo Brugnolo Rosa"""
+
 import tkinter as tk
 # Foram adicionadas as importações 'filedialog' e 'scrolledtext' que eram necessárias para a GUI
 from tkinter import filedialog, scrolledtext

@@ -60,7 +60,7 @@ inst_dic = {
 } 
 
 # --- VARIÁVEIS DE ESTADO DO SIMULADOR --- 
-file_path = "MINIMIPS_SIMULATOR\\arquivo.s" # Path do arquivo a ser lido
+file_path = "TESTES_ASSEMBLY\\teste-1.s" # Path do arquivo a ser lido
 PC = 0 # Program Counter 
 EPC = 0 # EPC  
 CAUSE = 0 # CAUSE 
@@ -382,6 +382,8 @@ def decode_execute(instrucao, PC, data_table, programa):
 # EXECUÇÃO DO PROGRAMA:
 
 matriz_programa, data_table = read_arq(file_path) 
+
+
 
 if matriz_programa: 
     print("--- INÍCIO DA SIMULAÇÃO ---") 

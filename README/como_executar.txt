@@ -1,0 +1,28 @@
+Simulador de compilador MIPS 32
+by: @João Francisco Barcala Paulo, @Lorenzo Brugnolo Rosa
+
+Como Usar:
+O Programa do SIMULADOR MINIMIPS 32 já foi compilado e está pronto para uso!
+
+Utilizando a Interface:
+	Selecionar Arquivo: Clique no botão *"Selecionar Arquivo (.s)"* para carregar um dos arquivos de teste (teste-completo.s, teste_memoria.s, teste-erros.s) ou seu próprio código.
+
+        Executar:
+
+            Marque a caixa "Executar Passo a Passo" e clique em *"Executar/Próximo Passo"* para avançar uma instrução de cada vez.
+
+            Desmarque a caixa para executar o programa inteiro de uma só vez.
+
+        Observar: Acompanhe as mudanças nos painéis de Registradores, Memória, Código e Saída.
+
+        Resetar: Clique no botão "Resetar" para limpar todos os registradores, memória e recarregar o programa do início.
+
+Arquivos de Teste Inclusos
+O projeto vem com três arquivos .s p
+ara demonstrar as funcionalidades do simulador:
+
+teste-completo.s: Testa a maioria das instruções aritméticas, lógicas e de comparação implementadas. É um ótimo ponto de partida para ver o simulador em ação.
+
+teste_memoria.s: Demonstra o uso da seção `.data` para armazenar strings e vetores, além de operações de empilhamento (`sw`) e desempilhamento (`lw`) usando o registrador `$sp`.
+
+teste_erros.s: Contém deliberadamente vários tipos de erros para testar e demonstrar a capacidade de detecção e relatório de erros do simulador.

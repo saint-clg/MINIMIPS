@@ -3,11 +3,11 @@
 # Pseudo-instruções foram trocadas por instruções base.
 
 .data
-minha_string: .asciiz "Ola, mundo da memoria MIPS!"
+minha_string: .asciiz "Teste da memoria MIPS!"
 meu_vetor:    .word   100, 200, 300, 400
 
-msg_valor_vetor: .asciiz "\nValor lido do vetor (indice 2): "
-msg_valor_pilha: .asciiz "\nValor desempilhado: "
+msg_valor_vetor: .asciiz "Valor lido do vetor (indice 2): "
+msg_valor_pilha: .asciiz "Valor desempilhado: "
 
 .text
     # 1. Imprime a string da seção .data

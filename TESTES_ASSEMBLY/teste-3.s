@@ -4,7 +4,7 @@
 
 .data
 msg_inicio: .asciiz "Inicio do teste de erros. Varios erros devem ser reportados a seguir."
-msg_fim_teste: .asciiz "\nFim do teste de erros."
+msg_fim_teste: .asciiz "Fim do teste de erros."
 
 .text
 

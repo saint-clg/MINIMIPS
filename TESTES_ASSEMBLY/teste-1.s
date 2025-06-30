@@ -4,14 +4,14 @@
 
 .data
 msg_add: .asciiz "Resultado ADD (15 + 5): "
-msg_sub: .asciiz "\nResultado SUB (15 - 5): "
-msg_mult: .asciiz "\nResultado MULT (15 * 5) em $LO: "
-msg_and: .asciiz "\nResultado AND (t0=15 & t1=5): "
-msg_or: .asciiz "\nResultado OR (t0=15 | t1=5): "
-msg_sll: .asciiz "\nResultado SLL (t0 << 2): "
-msg_slt: .asciiz "\nResultado SLT (15 < 5 -> false): "
-msg_slti: .asciiz "\nResultado SLTI (t0 < 20 -> true): "
-msg_lui: .asciiz "\nResultado LUI (Carrega 255 nos 16 bits mais altos): "
+msg_sub: .asciiz "Resultado SUB (15 - 5): "
+msg_mult: .asciiz "Resultado MULT (15 * 5) em $LO: "
+msg_and: .asciiz "Resultado AND (t0=15 & t1=5): "
+msg_or: .asciiz "Resultado OR (t0=15 | t1=5): "
+msg_sll: .asciiz "Resultado SLL (t0 << 2): "
+msg_slt: .asciiz "Resultado SLT (15 < 5 -> false): "
+msg_slti: .asciiz "Resultado SLTI (t0 < 20 -> true): "
+msg_lui: .asciiz "Resultado LUI (Carrega 255 nos 16 bits mais altos): "
 
 .text
     # Inicia os registradores
